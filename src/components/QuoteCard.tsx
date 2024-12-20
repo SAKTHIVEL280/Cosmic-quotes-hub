@@ -1,21 +1,59 @@
 import { Heart, Share2 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface QuoteCardProps {
+  id: number;
   quote: string;
   author: string;
   category: string;
-  likes?: number;
+  likes: number;
 }
 
-export function QuoteCard({ quote, author, category, likes = 0 }: QuoteCardProps) {
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(likes);
+export function QuoteCard({ id, quote, author, category, likes = 0 }: QuoteCardProps) {
+  const [isLiking, setIsLiking] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleLike = () => {
-    setLiked(!liked);
-    setLikeCount(prev => liked ? prev - 1 : prev + 1);
+  const handleLike = async () => {
+    if (isLiking) return;
+    setIsLiking(true);
+
+    try {
+      const { error } = await supabase
+        .from('quotes')
+        .update({ likes: likes + 1 })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Refresh quotes list
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+    } catch (error) {
+      console.error('Error liking quote:', error);
+      toast({
+        title: "Error",
+        description: "Failed to like quote. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      await navigator.share({
+        title: 'Check out this quote!',
+        text: `"${quote}" - ${author}`,
+        url: window.location.href,
+      });
+    } catch (error) {
+      console.log('Error sharing:', error);
+    }
   };
 
   return (
@@ -31,12 +69,16 @@ export function QuoteCard({ quote, author, category, likes = 0 }: QuoteCardProps
         <div className="flex gap-3">
           <button
             onClick={handleLike}
-            className="flex items-center gap-1 text-white/80 hover:text-white transition-colors"
+            disabled={isLiking}
+            className="flex items-center gap-1 text-white/80 hover:text-white transition-colors disabled:opacity-50"
           >
-            <Heart className={cn("w-5 h-5", liked && "fill-red-500 text-red-500")} />
-            <span className="text-sm">{likeCount}</span>
+            <Heart className={cn("w-5 h-5")} />
+            <span className="text-sm">{likes}</span>
           </button>
-          <button className="text-white/80 hover:text-white transition-colors">
+          <button 
+            onClick={handleShare}
+            className="text-white/80 hover:text-white transition-colors"
+          >
             <Share2 className="w-5 h-5" />
           </button>
         </div>

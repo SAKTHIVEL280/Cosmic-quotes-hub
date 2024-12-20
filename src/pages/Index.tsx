@@ -9,64 +9,55 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-// Temporary data - would come from backend
-const preloadedQuotes = [
-  {
-    quote: "The stars don't look bigger, but they do look brighter.",
-    author: "Sally Ride",
-    category: "Inspiration",
-    likes: 42,
-  },
-  {
-    quote: "That's one small step for man, one giant leap for mankind.",
-    author: "Neil Armstrong",
-    category: "History",
-    likes: 156,
-  },
-  {
-    quote: "The universe is not required to make sense to you.",
-    author: "Neil deGrasse Tyson",
-    category: "Wisdom",
-    likes: 89,
-  },
-  {
-    quote: "Life is what happens while you're busy making other plans.",
-    author: "John Lennon",
-    category: "Life",
-    likes: 120,
-  },
-  {
-    quote: "To infinity and beyond!",
-    author: "Buzz Lightyear",
-    category: "Humor",
-    likes: 95,
-  },
-];
+import { useQuery } from "@tanstack/react-query";
+import { supabase, type Quote } from "@/lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
 
 const categories = [
   "All",
-  "Inspiration",
-  "History",
-  "Wisdom",
-  "Life",
-  "Humor",
+  "Motivation",
   "Love",
+  "Humor",
+  "Life",
   "Success",
+  "Wisdom",
   "Happiness",
 ];
 
 const Index = () => {
   const [showForm, setShowForm] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const { toast } = useToast();
 
-  const filteredQuotes = selectedCategory === "All" 
-    ? preloadedQuotes
-    : preloadedQuotes.filter(quote => quote.category === selectedCategory);
+  const { data: quotes, isLoading } = useQuery({
+    queryKey: ['quotes', selectedCategory],
+    queryFn: async () => {
+      console.log('Fetching quotes for category:', selectedCategory);
+      let query = supabase.from('quotes').select('*');
+      
+      if (selectedCategory !== 'All') {
+        query = query.eq('category', selectedCategory);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching quotes:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load quotes. Please try again later.",
+          variant: "destructive",
+        });
+        throw error;
+      }
+      
+      return data as Quote[];
+    },
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-space-dark via-space-purple to-space-light p-4 md:p-8 relative overflow-hidden">
-      {/* Enhanced stars background with more stars and varying sizes */}
+      {/* Stars background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         {[...Array(100)].map((_, i) => (
           <div
@@ -125,9 +116,15 @@ const Index = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
-            {filteredQuotes.map((quote, index) => (
-              <QuoteCard key={index} {...quote} />
-            ))}
+            {isLoading ? (
+              <p className="text-white text-center col-span-full">Loading quotes...</p>
+            ) : quotes && quotes.length > 0 ? (
+              quotes.map((quote) => (
+                <QuoteCard key={quote.id} {...quote} />
+              ))
+            ) : (
+              <p className="text-white text-center col-span-full">No quotes found. Be the first to share one!</p>
+            )}
           </div>
         )}
       </div>

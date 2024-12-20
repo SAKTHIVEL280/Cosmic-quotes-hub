@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Select,
   SelectContent,
@@ -9,6 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { supabase } from "@/lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
 
 const categories = [
   "Motivation",
@@ -24,14 +27,50 @@ export function QuoteForm() {
   const [quote, setQuote] = useState("");
   const [author, setAuthor] = useState("");
   const [category, setCategory] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({ quote, author, category });
-    // TODO: Handle submission
-    setQuote("");
-    setAuthor("");
-    setCategory("");
+    setIsSubmitting(true);
+    
+    try {
+      const { error } = await supabase
+        .from('quotes')
+        .insert([
+          {
+            quote,
+            author,
+            category,
+            likes: 0
+          }
+        ]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success!",
+        description: "Your quote has been shared with the galaxy!",
+      });
+
+      // Reset form
+      setQuote("");
+      setAuthor("");
+      setCategory("");
+      
+      // Refresh quotes list
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+    } catch (error) {
+      console.error('Error submitting quote:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit quote. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -66,8 +105,9 @@ export function QuoteForm() {
       <Button
         type="submit"
         className="w-full bg-space-purple hover:bg-space-light text-white"
+        disabled={isSubmitting}
       >
-        Submit Quote
+        {isSubmitting ? "Submitting..." : "Submit Quote"}
       </Button>
     </form>
   );
