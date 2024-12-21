@@ -29,6 +29,7 @@ const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const { toast } = useToast();
 
+  // Query for regular quotes
   const { data: quotes, isLoading } = useQuery({
     queryKey: ['quotes', selectedCategory],
     queryFn: async () => {
@@ -40,8 +41,7 @@ const Index = () => {
       }
       
       const { data, error } = await query
-        .order('likes', { ascending: false })
-        .order('id', { ascending: false });
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error('Error fetching quotes:', error);
@@ -50,6 +50,25 @@ const Index = () => {
           description: "Failed to load quotes. Please try again later.",
           variant: "destructive",
         });
+        throw error;
+      }
+      
+      return data as Quote[];
+    },
+  });
+
+  // Query for popular quotes (top 3 by likes)
+  const { data: popularQuotes, isLoading: isLoadingPopular } = useQuery({
+    queryKey: ['popular-quotes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quotes')
+        .select('*')
+        .order('likes', { ascending: false })
+        .limit(3);
+      
+      if (error) {
+        console.error('Error fetching popular quotes:', error);
         throw error;
       }
       
@@ -117,17 +136,35 @@ const Index = () => {
             <QuoteForm />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
-            {isLoading ? (
-              <p className="text-white text-center col-span-full">Loading quotes...</p>
-            ) : quotes && quotes.length > 0 ? (
-              quotes.map((quote) => (
-                <QuoteCard key={quote.id} {...quote} />
-              ))
-            ) : (
-              <p className="text-white text-center col-span-full">No quotes found. Be the first to share one!</p>
+          <>
+            {/* Popular Quotes Section */}
+            {popularQuotes && popularQuotes.length > 0 && (
+              <div className="mb-12">
+                <h2 className="text-2xl font-bold text-white mb-6">Popular Quotes</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {popularQuotes.map((quote) => (
+                    <QuoteCard key={`popular-${quote.id}`} {...quote} />
+                  ))}
+                </div>
+              </div>
             )}
-          </div>
+
+            {/* Regular Quotes Section */}
+            <div className="animate-fade-in">
+              <h2 className="text-2xl font-bold text-white mb-6">Latest Quotes</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {isLoading ? (
+                  <p className="text-white text-center col-span-full">Loading quotes...</p>
+                ) : quotes && quotes.length > 0 ? (
+                  quotes.map((quote) => (
+                    <QuoteCard key={quote.id} {...quote} />
+                  ))
+                ) : (
+                  <p className="text-white text-center col-span-full">No quotes found. Be the first to share one!</p>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
