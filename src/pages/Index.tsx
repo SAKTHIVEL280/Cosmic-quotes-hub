@@ -41,7 +41,7 @@ const Index = () => {
       }
       
       const { data, error } = await query
-        .order('created_at', { ascending: false });
+        .order('id', { ascending: false });
       
       if (error) {
         console.error('Error fetching quotes:', error);
@@ -77,7 +77,7 @@ const Index = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-space-dark via-space-purple to-space-light p-4 md:p-8 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-[#0a0a1f] via-[#1a1b4b] to-[#2d2d6d] p-4 md:p-8 relative overflow-hidden">
       {/* Stars background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         {[...Array(100)].map((_, i) => (

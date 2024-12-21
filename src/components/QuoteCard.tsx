@@ -15,12 +15,14 @@ interface QuoteCardProps {
 
 export function QuoteCard({ id, quote, author, category, likes = 0 }: QuoteCardProps) {
   const [isLiking, setIsLiking] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const handleLike = async () => {
     if (isLiking) return;
     setIsLiking(true);
+    setIsLiked(true);
 
     try {
       const { error } = await supabase
@@ -30,17 +32,21 @@ export function QuoteCard({ id, quote, author, category, likes = 0 }: QuoteCardP
 
       if (error) throw error;
 
-      // Refresh quotes list
+      // Refresh both quotes lists
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['popular-quotes'] });
     } catch (error) {
       console.error('Error liking quote:', error);
+      setIsLiked(false);
       toast({
         title: "Error",
         description: "Failed to like quote. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsLiking(false);
+      setTimeout(() => {
+        setIsLiking(false);
+      }, 1000);
     }
   };
 
@@ -57,22 +63,28 @@ export function QuoteCard({ id, quote, author, category, likes = 0 }: QuoteCardP
   };
 
   return (
-    <div className="relative p-6 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 shadow-xl animate-float hover:scale-105 transition-transform duration-300">
+    <div className="relative p-6 rounded-lg bg-black/40 backdrop-blur-lg border border-white/20 shadow-xl hover:scale-105 transition-all duration-300">
       <div className="mb-4">
         <p className="text-lg text-white mb-4">{quote}</p>
         <p className="text-sm text-white/80">- {author}</p>
       </div>
       <div className="flex justify-between items-center">
-        <span className="text-xs px-3 py-1 rounded-full bg-space-purple/30 text-white">
+        <span className="text-xs px-3 py-1 rounded-full bg-white/10 text-white">
           {category}
         </span>
         <div className="flex gap-3">
           <button
             onClick={handleLike}
             disabled={isLiking}
-            className="flex items-center gap-1 text-white/80 hover:text-white transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 text-white/80 hover:text-white transition-colors disabled:opacity-50 group"
           >
-            <Heart className={cn("w-5 h-5")} />
+            <Heart 
+              className={cn(
+                "w-5 h-5 transition-all duration-300",
+                isLiked && "fill-red-500 text-red-500 scale-110",
+                isLiking && "animate-ping"
+              )} 
+            />
             <span className="text-sm">{likes}</span>
           </button>
           <button 
