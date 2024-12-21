@@ -39,7 +39,7 @@ const Index = () => {
         query = query.eq('category', selectedCategory);
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data, error } = await query.order('id', { ascending: false });
       
       if (error) {
         console.error('Error fetching quotes:', error);
